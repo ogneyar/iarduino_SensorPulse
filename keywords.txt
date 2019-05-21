@@ -1,0 +1,19 @@
+#	####################################################
+#	СИНТАКСИЧЕСКАЯ РАСКРАСКА ДЛЯ БИБИЛИОТЕКИ:
+#	iarduino_SensorPulse
+#	####################################################
+#	ТИПЫ ДАННЫХ:							   (KEYWORD1)
+	iarduino_SensorPulse	KEYWORD1
+#	####################################################
+#	МЕТОДЫ И ФУНКЦИИ:						   (KEYWORD2)
+	begin	KEYWORD2
+	check	KEYWORD2
+#	####################################################
+#	КОНСТАНТЫ:								   (LITERAL1)
+	ISP_ANALOG	LITERAL1
+	ISP_BEEP	LITERAL1
+	ISP_PULSE	LITERAL1
+	ISP_VALID	LITERAL1
+	ISP_DISCONNECTED	LITERAL1
+	ISP_CONNECTED	LITERAL1
+	ISP_CHANGED	LITERAL1
