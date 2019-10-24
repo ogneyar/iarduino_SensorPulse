@@ -13,7 +13,7 @@
 
 | Модель | Ссылка на магазин |
 |---|---|
-| <p></p> <img src="https://wiki.iarduino.ru/img/resources/677/677.svg" width="100px"></img>| https://iarduino.ru/shop/Sensory-Datchiki/datchik-pulsa.html |
+| <p></p> <img src="https://iarduino.ru/img/catalog/b55ce697191bcf7cce52b3197edb1f5b.jpg" width="100px"></img>| https://iarduino.ru/shop/Sensory-Datchiki/datchik-pulsa.html |
 
 
 ## Подключение библиотеки:
