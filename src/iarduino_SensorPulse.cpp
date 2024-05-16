@@ -9,7 +9,19 @@ volatile	iarduino_SensorPulse_VolatileVariableClass ISPVVC;
 
 //			инициализация счётчика пульса
 void		iarduino_SensorPulse::begin(){
-				ISP_func_SET_Timer2(1000);																		//	Запускаем 2 таймер на частоте 1 кГц
+				ISPVVC.ISP_flag_VAL=0;																			//	флаг указывающий о том, что показания сенсора валидны
+				ISPVVC.ISP_data_MAX=0;																			//  максимальное значение сенсора за текущие 2 секунды
+				ISPVVC.ISP_data_MIN=ISP_ADC_RESOLUTION;															//  минимальное  значение сенсора за текущие 2 секунды
+				ISPVVC.ISP_time_CNT=0;																			//	счетчик прерываний 2 таймера
+				ISPVVC.ISP_data_TOP=0;																			//	количество точек графика находящихся возле вершины пульса
+				ISPVVC.ISP_flag_TOP=0;																			//	флаг указывающий о том, что более 7 точек графика находятся возле вершины пульса
+				ISPVVC.ISP_time_TOP=0;																			//	время прошедшее после того, как более 7 точек графика вошли в вершину пульса (в мс/4)
+				ISPVVC.ISP_time_ARR[0]=0;																		//	промежуток времени между последними пульсами
+				ISPVVC.ISP_time_ARR[1]=0;																		//	промежуток времени между предпоследними пульсами
+				ISPVVC.ISP_time_ARR[2]=0;																		//	промежуток времени между предпредпоследними пульсами
+				ISPVVC.ISP_time_ARR[3]=0;																		//	промежуток времени между предпредпредпоследними пульсами
+				ISPVVC.ISP_time_ARR[4]=0;																		//	промежуток времени между предпредпредпредпоследними пульсами
+				Timer_Begin(1000);																				//	Разрешаем прерывания таймера на частоте 1кГц
 				if(ISPVVC.ISP_pins_BEP<255){																	//	Если указан вывод биппера
 					ISPVVC.ISP_data_BEP=0;																		//	Устанавливаем значение для биппера = LOW
 					ISPVVC.ISP_flag_BEP=1;																		//	Устанавливаем флаг, сигнализирующий таймеру, о необходимости вывода сигналов на биппер
@@ -24,7 +36,11 @@ uint16_t	iarduino_SensorPulse::check(uint8_t i){
 					case ISP_ANALOG:	return ISPVVC.ISP_data_PIN[0];	break;
 					case ISP_BEEP:		return ISP_func_CheckBeep();	break;
 					case ISP_PULSE:		return ISP_func_CheckPulse();	break;
-					case ISP_VALID:		return ISP_func_CheckValid();	break;
+					case ISP_VALID:		
+					#if defined(ESP8266)
+					yield();																					//	Обычно check(ISP_VALID) ставят в цикл, что может вызвать Soft WDT reset, по этому сбрасываем WDT.
+					#endif
+					return ISP_func_CheckValid();	break;
 				}
 			}
 
@@ -47,12 +63,12 @@ uint16_t	iarduino_SensorPulse::ISP_func_CheckPulse(){
 //			проверка валидности результата
 uint8_t		iarduino_SensorPulse::ISP_func_CheckValid(){
 				uint8_t	i1, i2, j1=0, j2=0, j3=ISPVVC.ISP_flag_VAL;
-					if(ISPVVC.ISP_data_PIN[0]-20>ISPVVC.ISP_data_PIN[1]){i1=1;}									//	i1 - вектор направления предыдущей точки графика
-					if(ISPVVC.ISP_data_PIN[0]+20<ISPVVC.ISP_data_PIN[1]){i1=0;}									//	i1==1 => вверх, i1==0 => вниз
+					if(ISPVVC.ISP_data_PIN[0]-ISP_ADC_FLUCTUATION>ISPVVC.ISP_data_PIN[1]){i1=1;}				//	i1 - вектор направления предыдущей точки графика
+					if(ISPVVC.ISP_data_PIN[0]+ISP_ADC_FLUCTUATION<ISPVVC.ISP_data_PIN[1]){i1=0;}				//	i1==1 => вверх, i1==0 => вниз
 				for(uint8_t k=1; k<9; k++){																		//	Проходим по 9 последним прочитанным значениям аналогового входа
-					if(ISPVVC.ISP_data_PIN[k]-20>ISPVVC.ISP_data_PIN[k+1]){i2=1;}								//	i2 - вектор направления текущей точки графика
-					if(ISPVVC.ISP_data_PIN[k]+20<ISPVVC.ISP_data_PIN[k+1]){i2=0;}								//	i2==1 => вверх, i2==0 => вниз
-					if(ISPVVC.ISP_data_PIN[k]>900||ISPVVC.ISP_data_PIN[k]<50){j1++;}							//	j1 - количество точек графика за пределами нормальных значений
+					if(ISPVVC.ISP_data_PIN[k]-ISP_ADC_FLUCTUATION>ISPVVC.ISP_data_PIN[k+1]){i2=1;}				//	i2 - вектор направления текущей точки графика
+					if(ISPVVC.ISP_data_PIN[k]+ISP_ADC_FLUCTUATION<ISPVVC.ISP_data_PIN[k+1]){i2=0;}				//	i2==1 => вверх, i2==0 => вниз
+					if(ISPVVC.ISP_data_PIN[k]>ISP_ADC_LIMIT_MAX||ISPVVC.ISP_data_PIN[k]<ISP_ADC_LIMIT_MIN){j1++;}//	j1 - количество точек графика за пределами нормальных значений
 					if(i1!=i2){j2++;} i1=i2;																	//	j2 - количество изменений вектора направления текущей точки относительно предыдущей
 				}	if(j2<2){ISPVVC.ISP_flag_VAL=1;}															//	если зафиксировано до    2 изменений вектора направления графика из 10 последних точек, то считаем что показания сенсора    валидны
 					if(j2>3){ISPVVC.ISP_flag_VAL=0;}															//	если зафиксировано более 3 изменений вектора направления графика из 10 последних точек, то считаем что показания сенсора не валидны
@@ -64,25 +80,8 @@ uint8_t		iarduino_SensorPulse::ISP_func_CheckValid(){
 					else						{return ISP_DISCONNECTED;}
 			}
 
-//			установка таймера2
-void		iarduino_SensorPulse::ISP_func_SET_Timer2(uint32_t f){
-//				определение значения предделителя для 2 таймера
-				uint16_t			prescaler=1024,	CS22_CS21_CS20=7;											//	Значение предделителя = prescaler, а соответствующее ему состояние битов регистра TCCR2B: CS22, CS21, CS20 = CS22_CS21_CS20
-				if(F_CPU/255/  1<f){prescaler=   1; CS22_CS21_CS20=1;}else
-				if(F_CPU/255/  8<f){prescaler=   8; CS22_CS21_CS20=2;}else
-				if(F_CPU/255/ 32<f){prescaler=  32; CS22_CS21_CS20=3;}else
-				if(F_CPU/255/ 64<f){prescaler=  64; CS22_CS21_CS20=4;}else
-				if(F_CPU/255/128<f){prescaler= 128; CS22_CS21_CS20=5;}else
-				if(F_CPU/255/256<f){prescaler= 256; CS22_CS21_CS20=6;}
-//				установка регистров 2 таймера и его запуск
-				TCCR2A	= 0<<COM2A1	| 0<<COM2A0	| 0<<COM2B1	| 0<<COM2B0	| 1<<WGM21	| 0<<WGM20;					//	биты COM2... = «0» (каналы A и B таймера отключены от выводов 3 и 11), биты WGM21 и WGM20 = «10» (таймер 2 в режиме CTC)
-				TCCR2B	= 0<<FOC2A	| 0<<FOC2B	| 0<<WGM22	| CS22_CS21_CS20;									//	биты FOC2... = «0» (без принудительной установки результата сравнения), бит WGM22 = «0» (таймер 2 в режиме CTC), биты CS22, CS21, CS20 = CS22_CS21_CS20 (значение предделителя)
-				OCR2A	= (uint8_t)(F_CPU/(prescaler*f))-1;														//	значение регистра сравнения OCR2A настраивается под частоту переполнения счётного регистра TCNT2=f.  f=F_CPU/(предделитель*(OCR2A+1)) => OCR2A = (F_CPU/(предделитель*f))-1
-				TIMSK2	= 0<<OCIE2B	| 1<<OCIE2A	| 0<<TOIE2;														//	разрешаем прерывание по совпадению счётного регистра TCNT2 и регистра сравнения OCR2A
-				SREG	= 1<<7;																					//	устанавливаем флаг глобального разрешения прерываний в регистре SREG
-			}
-
-/* ISR */	ISR(TIMER2_COMPA_vect){
+//			Обработка прерываний таймера																		//
+			Timer_Callback(Timer_Argument){																		//
 				ISPVVC.ISP_time_CNT++;																			//	увеличиваем счетчик прерываний
 				if (ISPVVC.ISP_time_CNT%4==0){																	//	заходим в таймер 1 раз за 4 прерывания
 					if (ISPVVC.ISP_time_TOP<0xFFFF){ISPVVC.ISP_time_TOP++;}										//	увеличиваем время прошедшее после того, как более 7 точек графика вошли в вершину пульса
@@ -93,8 +92,8 @@ void		iarduino_SensorPulse::ISP_func_SET_Timer2(uint32_t f){
 					}	ISPVVC.ISP_data_PIN[0]=analogRead(ISPVVC.ISP_pins_SEN);									//	считываем показания сенсора
 					if (ISPVVC.ISP_time_CNT>=2000){ISPVVC.ISP_time_CNT=0;										//	если произошло переполнение счетчика прерываний (более 2 секунд), то ...
 						ISPVVC.ISP_data_CEN=ISPVVC.ISP_data_MIN+(ISPVVC.ISP_data_MAX-ISPVVC.ISP_data_MIN)*2/3;	//	определяем 2/3 части от минимального до максимального значения за предыдущие 2 секунды
-						ISPVVC.ISP_data_MAX=0; ISPVVC.ISP_data_MIN=1024;										//	сбрасываем максимальное и минимальное значение сенсора за текущие 2 секунды
-					}
+						ISPVVC.ISP_data_MAX=0; ISPVVC.ISP_data_MIN=ISP_ADC_RESOLUTION;							//	сбрасываем максимальное и минимальное значение сенсора за текущие 2 секунды
+					}																							//
 					if (ISPVVC.ISP_data_MAX<ISPVVC.ISP_data_PIN[0]){ISPVVC.ISP_data_MAX=ISPVVC.ISP_data_PIN[0];}//	обновляем максимальное значение
 					if (ISPVVC.ISP_data_MIN>ISPVVC.ISP_data_PIN[0]){ISPVVC.ISP_data_MIN=ISPVVC.ISP_data_PIN[0];}//	обновляем минимальное  значение
 					if (ISPVVC.ISP_data_TOP>7){																	//	если более 7 точек графика находятся возле вершины пульса
@@ -106,7 +105,7 @@ void		iarduino_SensorPulse::ISP_func_SET_Timer2(uint32_t f){
 							if(ISPVVC.ISP_time_ARR[0]>0){ISPVVC.ISP_time_ARR[0]=60000/ISPVVC.ISP_time_ARR[0];}	//	переводим зафиксированный промежуток времени из мс в кол/мин
 							ISPVVC.ISP_time_TOP=0;																//	сброс времени входа более 7 точек графика в вершину пульса
 						}	ISPVVC.ISP_flag_TOP=1;																//	фиксируем вход в вершину пульса
-					}
+					}																							//
 					if (ISPVVC.ISP_data_TOP<3){ISPVVC.ISP_flag_TOP=0;}											//	фиксируем уход с вершины пульса
 				}
 				if (ISPVVC.ISP_flag_BEP){ if (ISPVVC.ISP_flag_VAL){ if (ISPVVC.ISP_time_TOP>0){ if (ISPVVC.ISP_time_TOP<25){ ISPVVC.ISP_data_BEP=ISPVVC.ISP_data_BEP==1?0:1; digitalWrite(ISPVVC.ISP_pins_BEP, ISPVVC.ISP_data_BEP); }}}}
