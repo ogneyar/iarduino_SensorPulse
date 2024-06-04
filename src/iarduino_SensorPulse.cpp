@@ -2,7 +2,7 @@
 
 volatile	iarduino_SensorPulse_VolatileVariableClass ISPVVC;
 
-			iarduino_SensorPulse::iarduino_SensorPulse(uint8_t i, uint8_t j){
+			iarduino_SensorPulse::iarduino_SensorPulse(uint8_t i, uint8_t j){									//	i - номер аналогового входа к которому подключён сенсор, j - вывод биппера (звукоизлучателя с генератором).
 				ISPVVC.ISP_pins_SEN=i;																			//	Сохраняем номер аналогового входа, к которому подключён сенсор пульса
 				ISPVVC.ISP_pins_BEP=j;																			//	Сохраняем номер цифрового  вывода, к которому подключён биппер
 			}
