@@ -110,3 +110,15 @@ uint8_t		iarduino_SensorPulse::ISP_func_CheckValid(){
 				}
 				if (ISPVVC.ISP_flag_BEP){ if (ISPVVC.ISP_flag_VAL){ if (ISPVVC.ISP_time_TOP>0){ if (ISPVVC.ISP_time_TOP<25){ ISPVVC.ISP_data_BEP=ISPVVC.ISP_data_BEP==1?0:1; digitalWrite(ISPVVC.ISP_pins_BEP, ISPVVC.ISP_data_BEP); }}}}
 			}
+
+#if defined(MCU_MIK32_Amur)
+extern "C" void servo_interrupt_handler()
+{
+	if (((bool)((TIMER16_2->ISR & TIMER16_2->IER) & TIMER16_ISR_ARR_MATCH_M)))
+	{
+		interrupt_handler_16_2();
+	}
+	// reset timer interrupt flags
+	TIMER16_2->ICR = 0xFFFFFFFF;
+}
+#endif

@@ -103,6 +103,9 @@ Timer_Callback(Timer_Argument){																	//	Функция будет в�
 #elif defined(RENESAS_CORTEX_M4)																//
 	#define Timer_Callback				void timer_callback_R4									//	функция  Timer_Callback станет функцией   timer_callback_R4.
 	#define Timer_Argument				timer_callback_args_t*timer_argument					//	Аргумент Timer_Argument станет аргументом timer_callback_args_t* timer_argument.
+#elif defined(MCU_MIK32_Amur)																	//
+	#define Timer_Callback				void interrupt_handler_16_2								//	функция  Timer_Callback станет функцией   interrupt_handler_16_2.
+	#define Timer_Argument				void   													//	Аргумент Timer_Argument станет аргументом void.
 #endif																							//
 																								//
 //		КОНФИГУРАЙИЯ РЕГИСТРОВ ВТОРОГО ТАЙМЕРА НА ВЫЗОВ ПРЕРЫВАНИЙ:								//
@@ -174,6 +177,26 @@ void	Timer_Begin(uint32_t freq){																//	Параметр: часто�
 				objTimer.setup_overflow_irq();													//	Разрешаем прерывания по переполнению.
 				objTimer.open();																//	Открываем таймер.
 				objTimer.start();																//	Запускаем таймер.
+			#elif defined(MCU_MIK32_Amur)														//
+				Timer16_HandleTypeDef htimer16;													//  Создаём handle таймера
+				htimer16.Instance = TIMER16_2;													//	Заполняем данными.
+				htimer16.Clock.Source = TIMER16_SOURCE_INTERNAL_SYSTEM;							//
+				htimer16.CountMode = TIMER16_COUNTMODE_INTERNAL;								//
+				htimer16.Clock.Prescaler = TIMER16_PRESCALER_32;								//
+				htimer16.ActiveEdge = TIMER16_ACTIVEEDGE_RISING;								//
+				htimer16.Preload = TIMER16_PRELOAD_AFTERWRITE;									//
+				htimer16.Trigger.Source = TIMER16_TRIGGER_TIM2_GPIO2_3;							//
+				htimer16.Trigger.ActiveEdge = TIMER16_TRIGGER_ACTIVEEDGE_SOFTWARE;				//
+				htimer16.Trigger.TimeOut = TIMER16_TIMEOUT_DISABLE;								//
+				htimer16.Filter.ExternalClock = TIMER16_FILTER_NONE;							//
+				htimer16.Filter.Trigger = TIMER16_FILTER_NONE;									//
+				htimer16.EncoderMode = TIMER16_ENCODER_DISABLE;									//
+				htimer16.Waveform.Enable = TIMER16_WAVEFORM_GENERATION_ENABLE;					//
+				htimer16.Waveform.Polarity = TIMER16_WAVEFORM_POLARITY_NONINVERTED;				//
+				HAL_Timer16_Init(&htimer16);													//  Инициализируем работу с 2 таймером.
+  				HAL_EPIC_MaskLevelSet(HAL_EPIC_TIMER16_2_MASK);									//
+  				HAL_IRQ_EnableInterrupts();														//	Разрешаем прерывания.
+  				HAL_Timer16_StartPWM_IT(&htimer16, 1000, 500);									//	Запускаем таймер.
 			#else																				//
 				#error Библиотека <iarduino_..._tmr> не поддерживает ваш микроконтроллер.		//
 			#endif																				//

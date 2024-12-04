@@ -26,6 +26,11 @@
 	#include <FspTimer.h>										//	Подключаем библиотеку управления таймерами для плат Arduino UNO R4.
 	static FspTimer objTimer;									//	Создаём объект для работы с таймером.
 	extern void timer_callback_R4(timer_callback_args_t*);		//	Подключаем функцию обработки прерываний таймера для плат Arduino UNO R4.
+#elif defined(MCU_MIK32_Amur)
+	#include "mik32_hal_timer16.h"
+	#include "mik32_hal_irq.h"
+	#include "wiring_LL.h"
+	void interrupt_handler_16_2(void);
 #endif															//
 																//
 #if defined(ESP32)												//
